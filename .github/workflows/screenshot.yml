@@ -1,0 +1,50 @@
+name: Build Brave Browser and Take Screenshot
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-brave:
+    runs-on: macos-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout brave-browser repository
+        uses: actions/checkout@v4
+        with:
+          repository: brave/brave-browser
+          fetch-depth: 1
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install git python3 node nvm ninja
+          nvm install 22
+          nvm use 22
+          npm install -g yarn
+
+      - name: Initialize Brave build
+        run: |
+          npm install
+          npm run init
+
+      - name: Build Brave (Release)
+        run: |
+          npm run build Release
+
+      - name: Launch Brave and capture screenshot
+        run: |
+          mkdir -p screenshots
+          echo "Launching Brave..."
+          open -a "out/Release/Brave Browser.app" --args --new-window "https://brave.com"
+          sleep 10
+          echo "Taking screenshot..."
+          screencapture -x screenshots/brave_desktop.png
+          echo "Killing Brave..."
+          killall "Brave Browser" || true
+
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: brave-screenshot
+          path: screenshots/brave_desktop.png
