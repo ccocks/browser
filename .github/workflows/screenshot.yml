@@ -15,6 +15,27 @@ jobs:
           repository: brave/brave-browser
           fetch-depth: 1
 
+      - name: Cache node modules
+        id: npm-cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-brave-node-${{ hashFiles('package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-brave-node-
+
+      - name: Setup git cache directory
+        run: mkdir -p .git-cache
+
+      - name: Cache git objects
+        id: git-cache
+        uses: actions/cache@v4
+        with:
+          path: .git-cache
+          key: ${{ runner.os }}-brave-git-${{ hashFiles('DEPS') }}
+          restore-keys: |
+            ${{ runner.os }}-brave-git-
+
       - name: Install dependencies
         run: |
           brew update
@@ -27,14 +48,17 @@ jobs:
           nvm use 22
           npm install -g yarn
 
+      - name: Install Brave dependencies
+        if: steps.npm-cache.outputs.cache-hit != 'true'
+        run: npm install
+
       - name: Initialize Brave build
-        run: |
-          npm install
-          npm run init
+        run: npm run init
+        env:
+          GIT_CACHE_PATH: .git-cache
 
       - name: Build Brave (Release)
-        run: |
-          npm run build Release
+        run: npm run build Release
 
       - name: Launch Brave and capture screenshot
         run: |
